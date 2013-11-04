@@ -3,18 +3,20 @@
 * Prefix: XYZ_
 ****************************************************/
 
-#ifndef COMMUNICATION_H
-#define	COMMUNICATION_H
+#ifndef XYZ_H
+#define	XYZ_H
 
 #include <Arduino.h>
 
 #include "Timer.h"
+#include "Encoder.h"
 
 // --------------------------------------------------
 // PUBLIC CONSTANTS
 // --------------------------------------------------
 
-#define COMM_UPDATE_RATE 2
+#define XYZ_UPDATE_RATE 10
+#define XYZ_PRINT_RATE 100
 
 // --------------------------------------------------
 // PUBLIC VARIABLES
@@ -24,17 +26,12 @@
 // PUBLIC METHODS
 // --------------------------------------------------
 
-void COMM_init(Timer* t);
-void COMM_commands();
+int XYZ_x();
+int XYZ_y();
+int XYZ_z();
 
-void COMM_send_command(String command);
-void COMM_send_command(String command, int arg);
+void XYZ_init(Timer* t);
+void XYZ_commands();
 
-void COMM_send_usb_command(String command);
-void COMM_send_usb_command(String command, int arg);
-
-void COMM_send_bluetooth_command(String command);
-void COMM_send_bluetooth_command(String command, int arg);
-
-#endif	/* COMMUNICATION_H */
+#endif	/* XYZ_H */
 
