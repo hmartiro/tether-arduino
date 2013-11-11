@@ -118,6 +118,7 @@ public:
 	}
 #else
 	inline int32_t read() {
+		delayMicroseconds(100);
 		update(&encoder);
 		return encoder.position;
 	}

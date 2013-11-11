@@ -35,5 +35,7 @@ int XYZ_z();
 void XYZ_init(Timer* t);
 void XYZ_commands();
 
+void XYZ_process_interrupt();
+
 #endif	/* XYZ_H */
 

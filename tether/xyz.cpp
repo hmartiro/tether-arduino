@@ -9,12 +9,12 @@
 // PRIVATE CONSTANTS
 // --------------------------------------------------
 
-#define X_POT_PIN A4
-#define Y_POT_PIN A5
+#define X_POT_PIN A1
+#define Y_POT_PIN A2
 
 // Encoder pins
-#define ENC_A 0
-#define ENC_B 1
+#define ENC_A 4
+#define ENC_B 6
 
 // What is the max value of the analog read
 #define ADC_MAX 1024.0
@@ -31,7 +31,7 @@
 // --------------------------------------------------
 
 // Encoder object
-Encoder enc(ENC_A, ENC_B);
+//Encoder enc(ENC_A, ENC_B);
 
 // Potentiometer values
 int x_pot = 0;
@@ -39,6 +39,11 @@ int y_pot = 0;
 
 // Encoder counter
 int enc_counter = 0;
+
+volatile int encoderRawPos = 0;
+
+static boolean rotatingA = false;
+static boolean rotatingB = false;
 
 // Zero points
 float x_pot_zero = ADC_MAX/2;
@@ -77,11 +82,43 @@ int XYZ_z() {
   return z;
 }
 
+void XYZ_process_interrupt() {
+  
+  boolean rotatingA2 = rotatingA;
+  boolean rotatingB2 = rotatingB;
+  
+  rotatingA = false;
+  rotatingB = false;
+  
+  while(rotatingA2 || rotatingB2) {
+    delayMicroseconds(100);
+    
+    int enc_a = digitalRead(ENC_A);
+    int enc_b = digitalRead(ENC_B);
+    
+    if (rotatingA2) {
+      
+      if ((enc_a == 1) && (enc_b == 1)) encoderRawPos++;
+      if ((enc_a == 1) && (enc_b == 0)) encoderRawPos--;
+      if ((enc_a == 0) && (enc_b == 1)) encoderRawPos--;
+      if ((enc_a == 0) && (enc_b == 0)) encoderRawPos++;
+      rotatingA2 = false; // Reset the flag back to false
+    }
+    
+    if (rotatingB2) {
+      //if ((enc_a == 1) && (enc_b == 1)) encoderRawPos--;
+      //if ((enc_a == 0) && (enc_b == 1)) encoderRawPos++;
+      rotatingB2 = false;
+    }
+  }
+}
+
 void XYZ_update() {
   
   x_pot = analogRead(X_POT_PIN);
   y_pot = analogRead(Y_POT_PIN);
-  enc_counter = enc.read();
+  //enc_counter = enc.read();
+  enc_counter = encoderRawPos;
   
   theta = ((float)x_pot - x_pot_zero) * theta_scale;
   phi = ((float)y_pot - y_pot_zero) * phi_scale;
@@ -103,7 +140,22 @@ void XYZ_print() {
   COMM_send_bluetooth_command(String(x) + " " + String(y) + " " + String(z));
 }
 
+void encoderA() {
+  rotatingA = true;
+}
+void encoderB() {
+  rotatingB = true;
+}
+
 void XYZ_init(Timer* t) {
+  
+  pinMode(ENC_A, INPUT_PULLUP); 
+  digitalWrite(ENC_A, HIGH);       
+  pinMode(ENC_B, INPUT_PULLUP); 
+  digitalWrite(ENC_B, HIGH); 
+
+  attachInterrupt(ENC_A, encoderA, CHANGE);
+  attachInterrupt(ENC_B, encoderB, CHANGE);
   
   t->every(XYZ_UPDATE_RATE, XYZ_update);
   t->every(XYZ_PRINT_RATE, XYZ_print);

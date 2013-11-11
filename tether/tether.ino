@@ -46,5 +46,6 @@ void setup() {
 
 void loop() {
   
+  XYZ_process_interrupt();
   t.update();
 }
