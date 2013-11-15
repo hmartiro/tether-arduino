@@ -9,15 +9,15 @@
 // PRIVATE CONSTANTS
 // --------------------------------------------------
 
-#define X_POT_PIN A1
-#define Y_POT_PIN A2
+#define X_POT_PIN A0
+#define Y_POT_PIN A1
 
 // Encoder pins
-#define ENC_A 4
-#define ENC_B 6
+#define ENC_A 19
+#define ENC_B 18
 
 // What is the max value of the analog read
-#define ADC_MAX 1024.0
+#define ADC_MAX 1024.0 //65536.0
 
 // What is the range of phi and theta?
 #define JOYSTICK_ANGLE 48.0
@@ -25,6 +25,8 @@
 // Math helpers
 #define DEG_TO_RAD PI/180.0
 #define RAD_TO_DEG 180.0/PI
+
+#define COMMAND_LEN 8
 
 // --------------------------------------------------
 // PRIVATE VARIABLES
@@ -65,6 +67,23 @@ float rho = 0.0;
 float x = 0.0;
 float y = 0.0;
 float z = 0.0;
+
+// These variables hold the integer values for x, y, z
+// that represent tenths of a millimeter
+short xInt = 0;
+short yInt = 0;
+short zInt = 0;
+
+// This boolean holds the button status
+boolean button_pressed = false;
+
+// This array holds what is actually sent
+// Byte 0: D, for data command
+// Byte 1-2: x as a short
+// Byte 3-4: y as a short
+// Byte 5-6: z as a short
+// Byte 7: button status
+byte command[COMMAND_LEN] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 // --------------------------------------------------
 // PRIVATE METHODS
@@ -127,17 +146,33 @@ void XYZ_update() {
   z = rho / sqrt(1 + pow(tan(theta),2) + pow(tan(phi),2));
   x = -tan(theta) * z;
   y = -tan(phi) * z;
+  
+  xInt = (short)(x * 100);
+  yInt = (short)(y * 100);
+  zInt = (short)(z * 100);
+  
+  // Convert to shorts, in tenths of a millisecond
+  command[1] = xInt;
+  command[2] = xInt >> 8;
+  command[3] = yInt;
+  command[4] = yInt >> 8;
+  command[5] = zInt;
+  command[6] = zInt >> 8;
+  command[7] = button_pressed;
 }
 
 void XYZ_print() {
-  /*Serial.print("rho: " + String(rho));
+  
+  Serial.print("rho: " + String(rho));
   Serial.print(", theta: " + String(theta * RAD_TO_DEG));
   Serial.print(", phi: " + String(phi * RAD_TO_DEG));
-  Serial.print(", X: " + String(x));
-  Serial.print(", Y: " + String(y));
-  Serial.println(", Z: " + String(z));
-  */
-  COMM_send_bluetooth_command(String(x) + " " + String(y) + " " + String(z));
+  Serial.print(", X: " + String(xInt));
+  Serial.print(", Y: " + String(yInt));
+  Serial.println(", Z: " + String(zInt));
+  
+  //Serial.println("Z reconstructed: " + String((int)command[5]));
+  //COMM_send_bluetooth_command(command, COMMAND_LEN);
+  COMM_send_bluetooth_command(String(xInt) + " " + String(yInt) + " " + String(zInt));
 }
 
 void encoderA() {
@@ -149,13 +184,19 @@ void encoderB() {
 
 void XYZ_init(Timer* t) {
   
+  //analogReadRes(16);
+  
   pinMode(ENC_A, INPUT_PULLUP); 
   digitalWrite(ENC_A, HIGH);       
   pinMode(ENC_B, INPUT_PULLUP); 
   digitalWrite(ENC_B, HIGH); 
 
+  pinMode(X_POT_PIN, INPUT_PULLUP);
+  
   attachInterrupt(ENC_A, encoderA, CHANGE);
   attachInterrupt(ENC_B, encoderB, CHANGE);
+  
+  command[0] = 'D';
   
   t->every(XYZ_UPDATE_RATE, XYZ_update);
   t->every(XYZ_PRINT_RATE, XYZ_print);

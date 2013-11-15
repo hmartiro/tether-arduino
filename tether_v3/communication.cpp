@@ -9,8 +9,8 @@
 // PRIVATE CONSTANTS
 // --------------------------------------------------
 
-#define USB_BAUD 9600
-#define BLUETOOTH_BAUD 9600
+#define USB_BAUD 115200
+#define BLUETOOTH_BAUD 115200
 
 #define END_COMMAND '\n'
 #define DELIMITER ' '
@@ -52,16 +52,26 @@ void COMM_send_usb_command(String command, int arg) {
 
 void COMM_send_bluetooth_command(String command) {
   //Serial.println("Command sent over bluetooth: " + command);
-  Serial2.print(command);
-  Serial2.print(END_COMMAND);
+  bluetooth.print(command);
+  bluetooth.print(END_COMMAND);
+}
+
+void COMM_send_bluetooth_command(byte* bytes, int len) {
+  int i;
+  for (i = 0; i < len; i++) {
+    bluetooth.write(bytes[i]);
+    //Serial.write(bytes[i]);
+  }
+  bluetooth.print(END_COMMAND);
+  Serial.println("wrote " + String(i+1) + " bytes to bluetooth");
 }
 
 void COMM_send_bluetooth_command(String command, int arg) {
   //Serial.println("Command sent over bluetoth: " + command + ", arg: " + String(arg));
-  Serial2.print(command);
-  Serial2.print(DELIMITER);
-  Serial2.print(arg);
-  Serial2.print(END_COMMAND);
+  bluetooth.print(command);
+  bluetooth.print(DELIMITER);
+  bluetooth.print(arg);
+  bluetooth.print(END_COMMAND);
 }
 
 void COMM_parse_command(String command) {
@@ -97,8 +107,8 @@ void COMM_update() {
     }
   }
   
-  if(Serial2.available()) {
-    bluetooth_rx_buffer = bluetooth_rx_buffer + String((char)Serial2.read());
+  if(bluetooth.available()) {
+    bluetooth_rx_buffer = bluetooth_rx_buffer + String((char)bluetooth.read());
     //Serial.println("Bluesmirf buffer increased: " + bluetooth_rx_buffer);
     
     int end_command_index = bluetooth_rx_buffer.indexOf(END_COMMAND);
@@ -114,7 +124,7 @@ void COMM_update() {
 void COMM_init(Timer* t) {
   
   Serial.begin(USB_BAUD);
-  Serial2.begin(BLUETOOTH_BAUD);
+  bluetooth.begin(BLUETOOTH_BAUD);
   
   t->every(COMM_UPDATE_RATE, COMM_update);
   
