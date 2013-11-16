@@ -9,9 +9,6 @@
 // PRIVATE CONSTANTS
 // --------------------------------------------------
 
-#define TRUE 1
-#define FALSE 0
-
 #define USB_BAUD 115200
 #define BLUETOOTH_BAUD 115200
 
@@ -136,7 +133,7 @@ void COMM_send_usb_command(String command, int arg) {
 }
 
 void COMM_send_bluetooth_command(String command, int arg) {
-  //Serial.println("Command sent over bluetoth: " + command + ", arg: " + String(arg));
+  Serial.println("Command sent over bluetoth: " + command + ", arg: " + String(arg));
   bluetooth.print(command);
   bluetooth.print(DELIMITER);
   bluetooth.print(arg);

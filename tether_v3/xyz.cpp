@@ -19,6 +19,9 @@
 #define ENC_A 19
 #define ENC_B 18
 
+// Button pins
+#define BUTTON_1_PIN 7
+
 // What is the max value of the analog read
 #define ADC_MAX 1024.0 //65536.0
 
@@ -52,8 +55,6 @@ int y_pot = 0;
 
 // Encoder counter
 int enc_counter = 0;
-
-volatile int encoderRawPos = 0;
 
 static boolean rotatingA = false;
 static boolean rotatingB = false;
@@ -93,8 +94,14 @@ int xInt = 0;
 int yInt = 0;
 int zInt = 0;
 
-// This boolean holds the button status
-boolean button_pressed = false;
+// This holds the button status
+int button_1_pressed;
+
+// This boolean says whether position changes are counting
+boolean tracking;
+float x_pot_stop_state;
+float y_pot_stop_state;
+float rho_stop_state;
 
 // --------------------------------------------------
 // PRIVATE METHODS
@@ -108,6 +115,8 @@ void XYZ_reset() {
   theta_scale = THETA_SCALE;
   phi_scale = PHI_SCALE;
   rho_scale = RHO_SCALE;
+  tracking = true;
+  button_1_pressed = FALSE;
   for(int i = 0; i < SMOOTHING_MAX; i++) {
     x_hist[i] = 0;
     y_hist[i] = 0;
@@ -133,10 +142,31 @@ int XYZ_z() {
 }
 
 void XYZ_zero() {
-  x_pot_zero = analogRead(X_POT_PIN);
-  y_pot_zero = analogRead(Y_POT_PIN);
-  enc_zero = enc.read();
+  x_pot_zero = x_pot;
+  y_pot_zero = y_pot;
+  enc_zero = enc_counter;
   COMM_send_bluetooth_command("AOK zero position set");
+}
+
+void XYZ_tracking(int state) {
+  if(state == 0) {
+    COMM_send_bluetooth_command("AOK tracking off");
+    if(tracking == state) return;
+    tracking = 0;
+    x_pot_stop_state = theta/theta_scale;
+    y_pot_stop_state = phi/phi_scale;
+    rho_stop_state = rho/rho_scale;
+  } else if (state == 1) {
+    COMM_send_bluetooth_command("AOK tracking on");
+    if(tracking == state) return;
+    tracking = 1;
+    XYZ_zero();
+    x_pot_zero -= x_pot_stop_state;
+    y_pot_zero -= y_pot_stop_state;
+    enc_zero -= rho_stop_state;
+  } else {
+    COMM_send_bluetooth_command("ERROR invalid tracking state, need 0 or 1");
+  }
 }
 
 void XYZ_smoothing(int N) {
@@ -162,31 +192,40 @@ void XYZ_update() {
   x = -tan(theta) * z;
   y = -tan(phi) * z;
   
-  long xTotal = 0;
-  long yTotal = 0;
-  long zTotal = 0;
-  
-  for(int i = smoothing-1; i > 0; i--) {
-    x_hist[i] = x_hist[i-1];
-    y_hist[i] = y_hist[i-1];
-    z_hist[i] = z_hist[i-1];
+  if(tracking) {
+    long xTotal = 0;
+    long yTotal = 0;
+    long zTotal = 0;
     
-    xTotal += x_hist[i];
-    yTotal += y_hist[i];
-    zTotal += z_hist[i];
+    for(int i = smoothing-1; i > 0; i--) {
+      x_hist[i] = x_hist[i-1];
+      y_hist[i] = y_hist[i-1];
+      z_hist[i] = z_hist[i-1];
+      
+      xTotal += x_hist[i];
+      yTotal += y_hist[i];
+      zTotal += z_hist[i];
+    }
+    
+    x_hist[0] = (int)(x * 100);
+    y_hist[0] = (int)(y * 100);
+    z_hist[0] = (int)(z * 100);
+    
+    xTotal += x_hist[0];
+    yTotal += y_hist[0];
+    zTotal += z_hist[0];
+  
+    xInt = xTotal/smoothing;
+    yInt = yTotal/smoothing;
+    zInt = zTotal/smoothing;
   }
   
-  x_hist[0] = (int)(x * 100);
-  y_hist[0] = (int)(y * 100);
-  z_hist[0] = (int)(z * 100);
-  
-  xTotal += x_hist[0];
-  yTotal += y_hist[0];
-  zTotal += z_hist[0];
-  
-  xInt = xTotal/smoothing;
-  yInt = yTotal/smoothing;
-  zInt = zTotal/smoothing;
+  int button_1_pressed_new = digitalRead(BUTTON_1_PIN);
+  //Serial.println("btn_new: " + String(button_1_pressed_new) + ", btn: " + String(button_1_pressed));
+  if(button_1_pressed_new != button_1_pressed) {
+    COMM_send_bluetooth_command("BTN_1", button_1_pressed_new);
+  }
+  button_1_pressed = button_1_pressed_new;
 }
 
 void XYZ_print() {
@@ -204,10 +243,11 @@ void XYZ_print() {
 void XYZ_init(Timer* t) {
   
   //analogReadRes(16);
-
-  XYZ_reset();
   
   pinMode(X_POT_PIN, INPUT_PULLUP);
+  pinMode(BUTTON_1_PIN, INPUT_PULLUP);
+  
+  XYZ_reset();
   
   t->every(XYZ_UPDATE_RATE, XYZ_update);
   t->every(XYZ_PRINT_RATE, XYZ_print);
@@ -217,6 +257,7 @@ void XYZ_commands() {
   
   // Commands
   COMM_check_command(String("ZERO"), XYZ_zero);
-  COMM_check_command(String("SMOOTHING"), XYZ_smoothing);
   COMM_check_command(String("RESET"), XYZ_reset);
+  COMM_check_command(String("SMOOTHING"), XYZ_smoothing);
+  COMM_check_command(String("TRACKING"), XYZ_tracking);
 }

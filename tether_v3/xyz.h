@@ -17,8 +17,8 @@
 // PUBLIC CONSTANTS
 // --------------------------------------------------
 
-#define XYZ_UPDATE_RATE 2 // 2 works well
-#define XYZ_PRINT_RATE 1000 // 10 works well, 100fps
+#define XYZ_UPDATE_RATE 2// 2 works well
+#define XYZ_PRINT_RATE 10 // 10 works well, 100fps
 
 // --------------------------------------------------
 // PUBLIC VARIABLES
