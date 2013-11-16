@@ -9,11 +9,16 @@
 // PRIVATE CONSTANTS
 // --------------------------------------------------
 
+#define TRUE 1
+#define FALSE 0
+
 #define USB_BAUD 115200
 #define BLUETOOTH_BAUD 115200
 
 #define END_COMMAND '\n'
 #define DELIMITER ' '
+
+#define NO_ARGUMENT -3333
 
 // --------------------------------------------------
 // PRIVATE VARIABLES
@@ -24,9 +29,89 @@ HardwareSerial bluetooth = HardwareSerial();
 String usb_rx_buffer = "";
 String bluetooth_rx_buffer = "";
 
+String last_command = String();
+int last_arg = -1;
+
 // --------------------------------------------------
 // PRIVATE METHODS
 // --------------------------------------------------
+
+static int COMM_check_command_string(String* pStr) {
+  
+  String command = *pStr;
+  
+  if (command == last_command)
+    return TRUE;
+  return FALSE;
+}
+
+static void COMM_check_all_commands() {
+  COMM_commands();
+  XYZ_commands();
+}
+
+static void COMM_command_received(String command) {
+  //Serial.println("COMM command received: " + command);
+  last_command = command;
+  last_command.toUpperCase();
+  last_arg = NO_ARGUMENT;
+  COMM_check_all_commands();
+}
+
+static void COMM_command_received(String command, int arg) {
+  //Serial.println("COMM command received: " + command + ", arg: " + String(arg));
+  last_command = command;
+  last_command.toUpperCase();
+  last_arg = arg;
+  COMM_check_all_commands();
+}
+
+static void COMM_parse_command(String command) {
+  Serial.println("Command received: " + command);
+  
+  int delimiter_index = command.indexOf(DELIMITER);
+  if(delimiter_index != -1) {
+    String command_name = command.substring(0, delimiter_index);
+    String arg_str = command.substring(delimiter_index+1);
+      int arg = arg_str.toInt();
+      if ((arg == 0) && (arg_str != "0")) {
+        Serial.println("Integer argument converted to zero, ignoring!!");
+        COMM_send_bluetooth_command("ERROR bad command argument, not int");
+      } else
+        COMM_command_received(command_name, arg);
+  } else {
+    COMM_command_received(command);
+  }
+}
+
+static void COMM_reset() {
+  Serial.println("COMM module reset!");
+}
+
+// --------------------------------------------------
+// PUBLIC METHODS
+// --------------------------------------------------
+
+void COMM_check_command(String pCommand, void (*callback)(void)) {
+  
+  if(last_arg != NO_ARGUMENT) {
+    //Serial.println("Ignoring command, argument present!");
+    return;
+  }
+  
+  if(COMM_check_command_string(&pCommand))
+    callback();
+}
+
+void COMM_check_command(String pCommand, void (*callback)(int)) {
+  
+  if(last_arg == NO_ARGUMENT) {
+    return;
+  }
+  
+  if(COMM_check_command_string(&pCommand))
+    callback(last_arg);
+}
 
 void COMM_send_command(String command) {
   COMM_send_usb_command(command);
@@ -50,8 +135,16 @@ void COMM_send_usb_command(String command, int arg) {
   Serial.print(END_COMMAND);
 }
 
+void COMM_send_bluetooth_command(String command, int arg) {
+  //Serial.println("Command sent over bluetoth: " + command + ", arg: " + String(arg));
+  bluetooth.print(command);
+  bluetooth.print(DELIMITER);
+  bluetooth.print(arg);
+  bluetooth.print(END_COMMAND);
+}
+
 void COMM_send_bluetooth_command(String command) {
-  //Serial.println("Command sent over bluetooth: " + command);
+  Serial.println("Command sent over bluetooth: " + command);
   bluetooth.print(command);
   bluetooth.print(END_COMMAND);
 }
@@ -66,31 +159,7 @@ void COMM_send_bluetooth_command(byte* bytes, int len) {
   Serial.println("wrote " + String(i+1) + " bytes to bluetooth");
 }
 
-void COMM_send_bluetooth_command(String command, int arg) {
-  //Serial.println("Command sent over bluetoth: " + command + ", arg: " + String(arg));
-  bluetooth.print(command);
-  bluetooth.print(DELIMITER);
-  bluetooth.print(arg);
-  bluetooth.print(END_COMMAND);
-}
 
-void COMM_parse_command(String command) {
-  Serial.println("Command received: " + command);
-  /*
-  int delimiter_index = command.indexOf(DELIMITER);
-  if(delimiter_index != -1) {
-    String command_name = command.substring(0, delimiter_index);
-    String arg_str = command.substring(delimiter_index+1);
-      int arg = arg_str.toInt();
-      if ((arg == 0) && (arg_str != "0"))
-        Serial.println("Integer argument converted to zero, ignoring!!");
-      else
-        CMD_command_received(command_name, arg);
-  } else {
-    CMD_command_received(command);
-  }
-  */
-}
 
 void COMM_update() {
   
@@ -134,5 +203,6 @@ void COMM_init(Timer* t) {
 void COMM_commands() {
   
   // Commands
+  COMM_check_command(String("RESET"), COMM_reset);
 }
 

@@ -10,6 +10,8 @@
 
 #include "Timer.h"
 
+#include "xyz.h"
+
 // --------------------------------------------------
 // PUBLIC CONSTANTS
 // --------------------------------------------------
@@ -36,6 +38,9 @@ void COMM_send_usb_command(String command, int arg);
 void COMM_send_bluetooth_command(String command);
 void COMM_send_bluetooth_command(String command, int arg);
 void COMM_send_bluetooth_command(byte* bytes, int len);
+
+void COMM_check_command(String pCommand, void (*callback)(void));
+void COMM_check_command(String pCommand, void (*callback)(int));
 
 #endif	/* COMMUNICATION_H */
 
