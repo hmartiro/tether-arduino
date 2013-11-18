@@ -11,6 +11,7 @@
 #include "Timer.h"
 
 #include "xyz.h"
+#include "hid.h"
 
 // --------------------------------------------------
 // PUBLIC CONSTANTS

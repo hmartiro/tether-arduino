@@ -42,6 +42,12 @@
 #define Y_POT_ZERO ADC_MAX/2
 #define ENC_ZERO 0.0
 
+// Orientations
+#define ORIENTATION_PX_PY 0
+#define ORIENTATION_PX_NY 1
+#define ORIENTATION_NX_NY 2
+#define ORIENTATION_NX_PY 3
+
 // --------------------------------------------------
 // PRIVATE VARIABLES
 // --------------------------------------------------
@@ -94,6 +100,11 @@ int xInt = 0;
 int yInt = 0;
 int zInt = 0;
 
+// These hold the last values of xInt, yInt, zInt
+int xIntLast = 0;
+int yIntLast = 0;
+int zIntLast = 0;
+
 // This holds the button status
 int button_1_pressed;
 
@@ -102,6 +113,8 @@ boolean tracking;
 float x_pot_stop_state;
 float y_pot_stop_state;
 float rho_stop_state;
+
+int orientation;
 
 // --------------------------------------------------
 // PRIVATE METHODS
@@ -117,6 +130,7 @@ void XYZ_reset() {
   rho_scale = RHO_SCALE;
   tracking = true;
   button_1_pressed = FALSE;
+  orientation = ORIENTATION_PX_PY;
   for(int i = 0; i < SMOOTHING_MAX; i++) {
     x_hist[i] = 0;
     y_hist[i] = 0;
@@ -129,16 +143,32 @@ void XYZ_reset() {
 // PRIVATE METHODS
 // --------------------------------------------------
 
+int XYZ_button_1() {
+  return button_1_pressed;
+}
+
 int XYZ_x() {
-  return x;
+  return xInt;
 }
 
 int XYZ_y() {
-  return y;
+  return yInt;
 }
 
 int XYZ_z() {
-  return z;
+  return zInt;
+}
+
+int XYZ_change_x() {
+  return xInt - xIntLast;
+}
+
+int XYZ_change_y() {
+  return yInt - yIntLast;
+}
+
+int XYZ_change_z() {
+  return xInt - xIntLast;
 }
 
 void XYZ_zero() {
@@ -214,18 +244,49 @@ void XYZ_update() {
     xTotal += x_hist[0];
     yTotal += y_hist[0];
     zTotal += z_hist[0];
-  
-    xInt = xTotal/smoothing;
-    yInt = yTotal/smoothing;
+    
+    xIntLast = xInt;
+    yIntLast = yInt;
+    zIntLast = zInt;
+
     zInt = zTotal/smoothing;
+    
+    if(orientation == ORIENTATION_PX_PY) {
+      xInt = xTotal/smoothing;
+      yInt = -yTotal/smoothing;
+    } else if(orientation == ORIENTATION_NX_PY) {
+      xInt = yTotal/smoothing;
+      yInt = -xTotal/smoothing;
+    } else if(orientation == ORIENTATION_NX_NY) {
+      xInt = xTotal/smoothing;
+      yInt = -yTotal/smoothing;
+    } else if(orientation == ORIENTATION_PX_NY) {
+      xInt = yTotal/smoothing;
+      yInt = -xTotal/smoothing;
+    }
+    
   }
   
   int button_1_pressed_new = digitalRead(BUTTON_1_PIN);
   //Serial.println("btn_new: " + String(button_1_pressed_new) + ", btn: " + String(button_1_pressed));
   if(button_1_pressed_new != button_1_pressed) {
     COMM_send_bluetooth_command("BTN_1", button_1_pressed_new);
+    HID_button_1_event(button_1_pressed_new);
   }
   button_1_pressed = button_1_pressed_new;
+}
+
+void XYZ_set_orientation(int arg) {
+  orientation = arg;
+}
+
+void XYZ_set_orientation_command(int arg) {
+  if ((arg < ORIENTATION_PX_PY) || (arg > ORIENTATION_NX_PY)) {
+    COMM_send_bluetooth_command("ERROR bad arg for orientation, 0-3");
+    return;
+  }
+  XYZ_set_orientation(arg);
+  COMM_send_bluetooth_command("AOK set orientation to " + String(arg));
 }
 
 void XYZ_print() {
@@ -251,6 +312,8 @@ void XYZ_init(Timer* t) {
   
   t->every(XYZ_UPDATE_RATE, XYZ_update);
   t->every(XYZ_PRINT_RATE, XYZ_print);
+  
+  Serial.println("XYZ: Position tracking module initialized!");
 }
 
 void XYZ_commands() {  
@@ -260,4 +323,5 @@ void XYZ_commands() {
   COMM_check_command(String("RESET"), XYZ_reset);
   COMM_check_command(String("SMOOTHING"), XYZ_smoothing);
   COMM_check_command(String("TRACKING"), XYZ_tracking);
+  COMM_check_command(String("ORIENTATION"), XYZ_set_orientation_command);
 }

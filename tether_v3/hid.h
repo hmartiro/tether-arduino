@@ -1,25 +1,23 @@
 /****************************************************
-* Position Tracking Module
-* Prefix: XYZ_
+* HID Device Emulation Module
+* Prefix: HID_
 ****************************************************/
 
-#ifndef XYZ_H
-#define	XYZ_H
+#ifndef HID_H
+#define	HID_H
 
 #include <Arduino.h>
 
 #include "Timer.h"
-#include "Encoder.h"
 
 #include "communication.h"
-#include "hid.h"
+#include "xyz.h"
 
 // --------------------------------------------------
 // PUBLIC CONSTANTS
 // --------------------------------------------------
 
-#define XYZ_UPDATE_RATE 1// 2 works well
-#define XYZ_PRINT_RATE 10 // 10 works well, 100fps
+#define HID_UPDATE_RATE 10
 
 // --------------------------------------------------
 // PUBLIC VARIABLES
@@ -29,19 +27,13 @@
 // PUBLIC METHODS
 // --------------------------------------------------
 
-int XYZ_x();
-int XYZ_y();
-int XYZ_z();
-int XYZ_button_1();
+void HID_reset();
+void HID_set_mouse(int arg);
+void HID_set_joystick(int arg);
+void HID_button_1_event(int arg);
 
-void XYZ_init(Timer* t);
-void XYZ_commands();
+void HID_init(Timer* t);
+void HID_commands();
 
-void XYZ_process_interrupt();
-
-int XYZ_change_x();
-int XYZ_change_y();
-int XYZ_change_z();
-
-#endif	/* XYZ_H */
+#endif	/* HID_H */
 

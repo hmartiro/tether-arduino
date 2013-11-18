@@ -16,6 +16,9 @@
 // Module that outputs position readings
 #include "xyz.h"
 
+// Module that enables mouse/joystick emulation
+#include "hid.h"
+
 // Module that handles serial and bluetooth
 // command parsing and communication
 #include "communication.h"
@@ -39,6 +42,7 @@ void setup() {
   
   COMM_init(&t);
   XYZ_init(&t);
+  HID_init(&t);
   
   Serial.println("");
   Serial.println("Tether initialized!");

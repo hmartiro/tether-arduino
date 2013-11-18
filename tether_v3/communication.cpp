@@ -45,6 +45,7 @@ static int COMM_check_command_string(String* pStr) {
 static void COMM_check_all_commands() {
   COMM_commands();
   XYZ_commands();
+  HID_commands();
 }
 
 static void COMM_command_received(String command) {
