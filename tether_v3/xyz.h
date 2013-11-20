@@ -18,8 +18,8 @@
 // PUBLIC CONSTANTS
 // --------------------------------------------------
 
-#define XYZ_UPDATE_RATE 1// 2 works well
-#define XYZ_PRINT_RATE 10 // 10 works well, 100fps
+#define XYZ_UPDATE_RATE 1 // 1 or 2 works well
+#define XYZ_PRINT_RATE 500 // 10 works well, 100fps
 
 // --------------------------------------------------
 // PUBLIC VARIABLES
@@ -33,6 +33,7 @@ int XYZ_x();
 int XYZ_y();
 int XYZ_z();
 int XYZ_button_1();
+int XYZ_button_2();
 
 void XYZ_init(Timer* t);
 void XYZ_commands();

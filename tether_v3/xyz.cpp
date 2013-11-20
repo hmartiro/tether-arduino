@@ -12,15 +12,15 @@
 #define SMOOTHING_MAX 50
 #define SMOOTHING_DEFAULT 50
 
-#define X_POT_PIN A0
-#define Y_POT_PIN A1
+#define X_POT_PIN A1
+#define Y_POT_PIN A2
 
 // Encoder pins
 #define ENC_A 19
 #define ENC_B 18
 
 // Button pins
-#define BUTTON_1_PIN 7
+#define BUTTON_PIN A9
 
 // What is the max value of the analog read
 #define ADC_MAX 1024.0 //65536.0
@@ -107,6 +107,7 @@ int zIntLast = 0;
 
 // This holds the button status
 int button_1_pressed;
+int button_2_pressed;
 
 // This boolean says whether position changes are counting
 boolean tracking;
@@ -130,6 +131,7 @@ void XYZ_reset() {
   rho_scale = RHO_SCALE;
   tracking = true;
   button_1_pressed = FALSE;
+  button_2_pressed = FALSE;
   orientation = ORIENTATION_PX_PY;
   for(int i = 0; i < SMOOTHING_MAX; i++) {
     x_hist[i] = 0;
@@ -145,6 +147,10 @@ void XYZ_reset() {
 
 int XYZ_button_1() {
   return button_1_pressed;
+}
+
+int XYZ_button_2() {
+  return button_2_pressed;
 }
 
 int XYZ_x() {
@@ -168,7 +174,7 @@ int XYZ_change_y() {
 }
 
 int XYZ_change_z() {
-  return xInt - xIntLast;
+  return zInt - zIntLast;
 }
 
 void XYZ_zero() {
@@ -254,26 +260,44 @@ void XYZ_update() {
     if(orientation == ORIENTATION_PX_PY) {
       xInt = xTotal/smoothing;
       yInt = -yTotal/smoothing;
-    } else if(orientation == ORIENTATION_NX_PY) {
-      xInt = yTotal/smoothing;
-      yInt = -xTotal/smoothing;
-    } else if(orientation == ORIENTATION_NX_NY) {
-      xInt = xTotal/smoothing;
-      yInt = -yTotal/smoothing;
     } else if(orientation == ORIENTATION_PX_NY) {
       xInt = yTotal/smoothing;
+      yInt = xTotal/smoothing;
+    } else if(orientation == ORIENTATION_NX_NY) {
+      xInt = -xTotal/smoothing;
+      yInt = yTotal/smoothing;
+    } else if(orientation == ORIENTATION_NX_PY) {
+      xInt = -yTotal/smoothing;
       yInt = -xTotal/smoothing;
     }
-    
+    HID_update_mouse();
   }
   
-  int button_1_pressed_new = digitalRead(BUTTON_1_PIN);
-  //Serial.println("btn_new: " + String(button_1_pressed_new) + ", btn: " + String(button_1_pressed));
+  int button_voltage = analogRead(BUTTON_PIN);
+  Serial.println("Button voltage: " + String(button_voltage));
+  
+  int button_1_pressed_new = FALSE;
+  int button_2_pressed_new = FALSE;
+  
+  if(button_voltage < 60) {
+    button_2_pressed_new = TRUE;
+  } else if (button_voltage < 300) {
+    button_1_pressed_new = TRUE;
+  }
+    
+  
+  Serial.println("btn_new: " + String(button_1_pressed_new) + ", btn: " + String(button_1_pressed));
   if(button_1_pressed_new != button_1_pressed) {
     COMM_send_bluetooth_command("BTN_1", button_1_pressed_new);
     HID_button_1_event(button_1_pressed_new);
   }
-  button_1_pressed = button_1_pressed_new;
+  button_1_pressed = button_1_pressed_new; 
+  
+  if(button_2_pressed_new != button_2_pressed) {
+    COMM_send_bluetooth_command("BTN_2", button_2_pressed_new);
+    HID_button_2_event(button_2_pressed_new);
+  }
+  button_2_pressed = button_2_pressed_new;
 }
 
 void XYZ_set_orientation(int arg) {
@@ -306,7 +330,7 @@ void XYZ_init(Timer* t) {
   //analogReadRes(16);
   
   pinMode(X_POT_PIN, INPUT_PULLUP);
-  pinMode(BUTTON_1_PIN, INPUT_PULLUP);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
   
   XYZ_reset();
   

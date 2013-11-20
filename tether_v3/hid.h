@@ -17,7 +17,7 @@
 // PUBLIC CONSTANTS
 // --------------------------------------------------
 
-#define HID_UPDATE_RATE 10
+#define HID_UPDATE_RATE 75
 
 // --------------------------------------------------
 // PUBLIC VARIABLES
@@ -31,6 +31,10 @@ void HID_reset();
 void HID_set_mouse(int arg);
 void HID_set_joystick(int arg);
 void HID_button_1_event(int arg);
+void HID_button_2_event(int arg);
+
+void HID_update_mouse();
+void HID_update_joystick();
 
 void HID_init(Timer* t);
 void HID_commands();
